@@ -1,47 +1,35 @@
 package com.example.wildlife_app
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.lifecycleScope
+import com.example.wildlife_app.data.local.AppDatabase
+import com.example.wildlife_app.data.remote.NetworkModule
+import com.example.wildlife_app.data.repository.SpeciesRepository
 import com.example.wildlife_app.ui.theme.WildlifeappTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // TEMPORARY: API test. Remove before committing.
+        lifecycleScope.launch {
+            val repo = SpeciesRepository(
+                NetworkModule.api,
+                AppDatabase.getInstance(this@MainActivity).speciesDao()
+            )
+            Log.d("API_TEST", repo.searchSpecies("robin").toString())
+        }
+
         setContent {
             WildlifeappTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                // App content will go here
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    WildlifeappTheme {
-        Greeting("Android")
     }
 }

@@ -35,4 +35,15 @@ class SpeciesRepository(
             )
         )
     }
+
+    suspend fun getSavedSpeciesById(taxonId: Long): Species? {
+        val entity = speciesDao.getById(taxonId) ?: return null
+
+        return Species(
+            id = entity.id,
+            scientificName = entity.scientificName,
+            commonName = entity.commonName,
+            photoUrl = entity.photoUrl
+        )
+    }
 }

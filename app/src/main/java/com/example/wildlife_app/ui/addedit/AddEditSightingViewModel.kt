@@ -190,7 +190,7 @@ class AddEditSightingViewModel(
             val target = photoStorage.createCameraTarget()
             savedStateHandle["pendingCameraPath"] = target.path
             target.contentUri
-        } catch (e: IOException) {
+        } catch (_: IOException) {
             _uiState.value = _uiState.value.copy(
                 errorMessage = "Couldn't prepare the camera. Check device storage."
             )

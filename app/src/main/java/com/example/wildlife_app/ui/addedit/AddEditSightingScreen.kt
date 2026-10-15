@@ -171,7 +171,11 @@ fun AddEditSightingScreen(
         // Select, replace, or remove the sighting photo.
         PhotoPicker(
             selectedPhotoUri = uiState.photoUri,
-            onPhotoSelected = viewModel::onPhotoSelected
+            onGalleryPhotoPicked = viewModel::onGalleryPhotoPicked,
+            prepareCameraPhoto = viewModel::prepareCameraPhoto,
+            onCameraResult = viewModel::onCameraResult,
+            onCameraUnavailable = viewModel::onCameraUnavailable,
+            onRemovePhoto = { viewModel.onPhotoSelected(null) }
         )
 
         uiState.errorMessage?.let { message ->

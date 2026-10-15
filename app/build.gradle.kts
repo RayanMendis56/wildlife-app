@@ -44,6 +44,14 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin") {
+            useVersion("2.2.10")
+        }
+    }
+}
+
 dependencies {
     val roomVersion = "2.8.5"
 

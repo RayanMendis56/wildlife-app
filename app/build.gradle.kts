@@ -62,6 +62,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.5")
 
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("io.coil-kt.coil3:coil-compose:3.6.3")
 
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation(

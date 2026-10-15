@@ -9,6 +9,7 @@ import com.example.wildlife_app.data.local.PhotoStorage
 import com.example.wildlife_app.data.local.entity.SightingEntity
 import com.example.wildlife_app.data.repository.SightingRepository
 import com.example.wildlife_app.data.repository.SpeciesRepository
+import com.example.wildlife_app.domain.CoordinateParser
 import com.example.wildlife_app.domain.model.Species
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -275,8 +276,8 @@ class AddEditSightingViewModel(
         val currentState = _uiState.value
 
         val species = currentState.species
-        val latitude = currentState.latitude.toDoubleOrNull()
-        val longitude = currentState.longitude.toDoubleOrNull()
+        val latitude = CoordinateParser.parse(currentState.latitude, "NS")
+        val longitude = CoordinateParser.parse(currentState.longitude, "EW")
 
         when {
             species == null -> {

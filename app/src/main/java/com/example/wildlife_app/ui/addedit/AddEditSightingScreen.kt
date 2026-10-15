@@ -148,6 +148,7 @@ fun AddEditSightingScreen(
             value = uiState.latitude,
             onValueChange = viewModel::onLatitudeChanged,
             label = { Text("Latitude") },
+            supportingText = { Text("e.g. -1.2833 or 1° 17' S") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -156,6 +157,7 @@ fun AddEditSightingScreen(
             value = uiState.longitude,
             onValueChange = viewModel::onLongitudeChanged,
             label = { Text("Longitude") },
+            supportingText = { Text("e.g. 36.8167 or 36° 49' E") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )

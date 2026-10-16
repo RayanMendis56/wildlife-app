@@ -1,36 +1,45 @@
 
 package com.example.wildlife_app.ui.components
 
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 
 @Composable
 fun PhotoPicker(
     selectedPhotoUri: String?,
-    onPhotoSelected: (String?) -> Unit
+    onGalleryPhotoPicked: (Uri?) -> Unit,
+    prepareCameraPhoto: () -> Uri?,
+    onCameraResult: (Boolean) -> Unit,
+    onCameraUnavailable: () -> Unit,
+    onRemovePhoto: () -> Unit
 ) {
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        // A null URI means the user cancelled the picker.
-        if (uri != null) {
-            onPhotoSelected(uri.toString())
-        }
-    }
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> onGalleryPhotoPicked(uri) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success -> onCameraResult(success) }
 
     Column(
         modifier = Modifier
@@ -44,32 +53,56 @@ fun PhotoPicker(
         )
 
         if (selectedPhotoUri != null) {
-            Text(
-                text = "A photo has been selected.",
-                modifier = Modifier.semantics {
-                    contentDescription = "A photo has been selected"
-                }
+            AsyncImage(
+                model = selectedPhotoUri,
+                contentDescription = "Preview of the selected sighting photo",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
             )
 
             OutlinedButton(
-                onClick = { onPhotoSelected(null) },
+                onClick = onRemovePhoto,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Remove Photo")
             }
         }
 
-        Button(
-            onClick = { photoPickerLauncher.launch("image/*") },
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                if (selectedPhotoUri == null) {
-                    "Choose Photo"
-                } else {
-                    "Choose Another Photo"
-                }
-            )
+            Button(
+                onClick = {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(
+                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                        )
+                    )
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Gallery")
+            }
+
+            Button(
+                onClick = {
+                    val target = prepareCameraPhoto()
+                    if (target != null) {
+                        try {
+                            cameraLauncher.launch(target)
+                        } catch (_: ActivityNotFoundException) {
+                            onCameraUnavailable()
+                        }
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Camera")
+            }
         }
     }
 }

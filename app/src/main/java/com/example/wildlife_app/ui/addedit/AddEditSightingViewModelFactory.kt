@@ -6,6 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.wildlife_app.data.local.AppDatabase
+import com.example.wildlife_app.data.local.PhotoStorage
 import com.example.wildlife_app.data.remote.NetworkModule
 import com.example.wildlife_app.data.repository.SightingRepository
 import com.example.wildlife_app.data.repository.SpeciesRepository
@@ -34,7 +35,8 @@ class AddEditSightingViewModelFactory(
             val viewModel = AddEditSightingViewModel(
                 SavedStateHandle(),
                 sightingRepository,
-                speciesRepository
+                speciesRepository,
+                PhotoStorage(appContext)
             )
 
             @Suppress("UNCHECKED_CAST")

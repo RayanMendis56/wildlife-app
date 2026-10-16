@@ -1,17 +1,21 @@
 
 package com.example.wildlife_app.ui.addedit
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wildlife_app.data.local.PhotoStorage
 import com.example.wildlife_app.data.local.entity.SightingEntity
 import com.example.wildlife_app.data.repository.SightingRepository
 import com.example.wildlife_app.data.repository.SpeciesRepository
+import com.example.wildlife_app.domain.CoordinateParser
 import com.example.wildlife_app.domain.model.Species
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 data class AddEditSightingUiState(
     val species: Species? = null,
@@ -31,7 +35,8 @@ data class AddEditSightingUiState(
 class AddEditSightingViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val sightingRepository: SightingRepository,
-    private val speciesRepository: SpeciesRepository
+    private val speciesRepository: SpeciesRepository,
+    private val photoStorage: PhotoStorage
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -166,6 +171,48 @@ class AddEditSightingViewModel(
         )
     }
 
+    fun onGalleryPhotoPicked(source: Uri?) {
+        if (source == null) return
+
+        viewModelScope.launch {
+            val storedUri = photoStorage.copyFromGallery(source)
+            if (storedUri != null) {
+                onPhotoSelected(storedUri)
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Couldn't load that photo. Please try another one."
+                )
+            }
+        }
+    }
+
+    fun prepareCameraPhoto(): Uri? =
+        try {
+            val target = photoStorage.createCameraTarget()
+            savedStateHandle["pendingCameraPath"] = target.path
+            target.contentUri
+        } catch (_: IOException) {
+            _uiState.value = _uiState.value.copy(
+                errorMessage = "Couldn't prepare the camera. Check device storage."
+            )
+            null
+        }
+
+    fun onCameraResult(success: Boolean) {
+        val path = savedStateHandle.get<String>("pendingCameraPath") ?: return
+        savedStateHandle.remove<String>("pendingCameraPath")
+
+        val storedUri = photoStorage.finishCameraCapture(path, success)
+        if (storedUri != null) onPhotoSelected(storedUri)
+    }
+
+    fun onCameraUnavailable() {
+        onCameraResult(false)
+        _uiState.value = _uiState.value.copy(
+            errorMessage = "No camera app is available on this device."
+        )
+    }
+
     fun onTimestampChanged(timestamp: Long) {
         savedStateHandle["timestamp"] = timestamp
 
@@ -229,8 +276,8 @@ class AddEditSightingViewModel(
         val currentState = _uiState.value
 
         val species = currentState.species
-        val latitude = currentState.latitude.toDoubleOrNull()
-        val longitude = currentState.longitude.toDoubleOrNull()
+        val latitude = CoordinateParser.parse(currentState.latitude, "NS")
+        val longitude = CoordinateParser.parse(currentState.longitude, "EW")
 
         when {
             species == null -> {

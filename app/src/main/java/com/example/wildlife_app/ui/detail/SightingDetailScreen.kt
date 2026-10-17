@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,7 +32,8 @@ import coil3.compose.AsyncImage
 fun SightingDetailScreen(
     sightingId: Long,
     viewModel: SightingDetailViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -115,6 +117,13 @@ fun SightingDetailScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Open location in Maps")
+                }
+
+                OutlinedButton(
+                    onClick = onEdit,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Edit sighting")
                 }
             }
 

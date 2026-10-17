@@ -222,6 +222,7 @@ class AddEditSightingViewModel(
     }
 
     fun loadForEditing(sightingId: Long) {
+        if (editingSightingId == sightingId) return
         editingSightingId = sightingId
 
         viewModelScope.launch {

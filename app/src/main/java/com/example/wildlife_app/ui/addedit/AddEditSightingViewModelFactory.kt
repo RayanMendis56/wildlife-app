@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.wildlife_app.data.local.AppDatabase
 import com.example.wildlife_app.data.local.PhotoStorage
 import com.example.wildlife_app.data.remote.NetworkModule
+import com.example.wildlife_app.data.repository.OutingRepository
 import com.example.wildlife_app.data.repository.SightingRepository
 import com.example.wildlife_app.data.repository.SpeciesRepository
 
@@ -20,7 +21,11 @@ class AddEditSightingViewModelFactory(
     override fun <T : ViewModel> create(
         modelClass: Class<T>
     ): T {
-        if (modelClass.isAssignableFrom(AddEditSightingViewModel::class.java)) {
+        if (
+            modelClass.isAssignableFrom(
+                AddEditSightingViewModel::class.java
+            )
+        ) {
             val database = AppDatabase.getInstance(appContext)
 
             val sightingRepository = SightingRepository(
@@ -32,11 +37,16 @@ class AddEditSightingViewModelFactory(
                 database.speciesDao()
             )
 
+            val outingRepository = OutingRepository(
+                database.outingDao()
+            )
+
             val viewModel = AddEditSightingViewModel(
                 SavedStateHandle(),
                 sightingRepository,
                 speciesRepository,
-                PhotoStorage(appContext)
+                PhotoStorage(appContext),
+                outingRepository
             )
 
             @Suppress("UNCHECKED_CAST")

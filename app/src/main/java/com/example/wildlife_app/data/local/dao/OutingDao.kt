@@ -1,3 +1,4 @@
+
 package com.example.wildlife_app.data.local.dao
 
 import androidx.room.Dao
@@ -18,4 +19,7 @@ interface OutingDao {
 
     @Query("SELECT * FROM outings ORDER BY date DESC")
     fun getAll(): Flow<List<OutingEntity>>
+
+    @Query("SELECT * FROM outings WHERE id = :outingId")
+    suspend fun getById(outingId: Long): OutingEntity?
 }

@@ -6,7 +6,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wildlife_app.data.local.PhotoStorage
+import com.example.wildlife_app.data.local.entity.OutingEntity
 import com.example.wildlife_app.data.local.entity.SightingEntity
+import com.example.wildlife_app.data.repository.OutingRepository
 import com.example.wildlife_app.data.repository.SightingRepository
 import com.example.wildlife_app.data.repository.SpeciesRepository
 import com.example.wildlife_app.domain.CoordinateParser
@@ -24,6 +26,8 @@ data class AddEditSightingUiState(
     val notes: String = "",
     val photoUri: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
+    val outingId: Long? = null,
+    val outings: List<OutingEntity> = emptyList(),
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val savedSightingId: Long? = null,
@@ -36,7 +40,8 @@ class AddEditSightingViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val sightingRepository: SightingRepository,
     private val speciesRepository: SpeciesRepository,
-    private val photoStorage: PhotoStorage
+    private val photoStorage: PhotoStorage,
+    private val outingRepository: OutingRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -47,6 +52,7 @@ class AddEditSightingViewModel(
             photoUri = savedStateHandle["photoUri"],
             timestamp = savedStateHandle["timestamp"]
                 ?: System.currentTimeMillis(),
+            outingId = savedStateHandle["outingId"],
             speciesQuery = savedStateHandle["speciesQuery"] ?: "",
             species = restoreSelectedSpecies()
         )
@@ -56,6 +62,23 @@ class AddEditSightingViewModel(
         _uiState.asStateFlow()
 
     private var editingSightingId: Long? = null
+
+    init {
+        observeOutings()
+    }
+
+    private fun observeOutings() {
+        viewModelScope.launch {
+            outingRepository.observeAllOutings().collect { outings ->
+                _uiState.value = _uiState.value.copy(outings = outings)
+            }
+        }
+    }
+
+    fun onOutingSelected(outingId: Long?) {
+        savedStateHandle["outingId"] = outingId
+        _uiState.value = _uiState.value.copy(outingId = outingId)
+    }
 
     private fun restoreSelectedSpecies(): Species? {
         val id = savedStateHandle.get<Long>("selectedSpeciesId")
@@ -75,7 +98,6 @@ class AddEditSightingViewModel(
 
     fun onSpeciesQueryChanged(query: String) {
         savedStateHandle["speciesQuery"] = query
-
         _uiState.value = _uiState.value.copy(
             speciesQuery = query,
             errorMessage = null
@@ -139,7 +161,6 @@ class AddEditSightingViewModel(
 
     fun onLatitudeChanged(latitude: String) {
         savedStateHandle["latitude"] = latitude
-
         _uiState.value = _uiState.value.copy(
             latitude = latitude,
             errorMessage = null
@@ -148,7 +169,6 @@ class AddEditSightingViewModel(
 
     fun onLongitudeChanged(longitude: String) {
         savedStateHandle["longitude"] = longitude
-
         _uiState.value = _uiState.value.copy(
             longitude = longitude,
             errorMessage = null
@@ -157,18 +177,12 @@ class AddEditSightingViewModel(
 
     fun onNotesChanged(notes: String) {
         savedStateHandle["notes"] = notes
-
-        _uiState.value = _uiState.value.copy(
-            notes = notes
-        )
+        _uiState.value = _uiState.value.copy(notes = notes)
     }
 
     fun onPhotoSelected(photoUri: String?) {
         savedStateHandle["photoUri"] = photoUri
-
-        _uiState.value = _uiState.value.copy(
-            photoUri = photoUri
-        )
+        _uiState.value = _uiState.value.copy(photoUri = photoUri)
     }
 
     fun onGalleryPhotoPicked(source: Uri?) {
@@ -180,7 +194,8 @@ class AddEditSightingViewModel(
                 onPhotoSelected(storedUri)
             } else {
                 _uiState.value = _uiState.value.copy(
-                    errorMessage = "Couldn't load that photo. Please try another one."
+                    errorMessage =
+                        "Couldn't load that photo. Please try another one."
                 )
             }
         }
@@ -193,13 +208,16 @@ class AddEditSightingViewModel(
             target.contentUri
         } catch (_: IOException) {
             _uiState.value = _uiState.value.copy(
-                errorMessage = "Couldn't prepare the camera. Check device storage."
+                errorMessage =
+                    "Couldn't prepare the camera. Check device storage."
             )
             null
         }
 
     fun onCameraResult(success: Boolean) {
-        val path = savedStateHandle.get<String>("pendingCameraPath") ?: return
+        val path =
+            savedStateHandle.get<String>("pendingCameraPath") ?: return
+
         savedStateHandle.remove<String>("pendingCameraPath")
 
         val storedUri = photoStorage.finishCameraCapture(path, success)
@@ -215,10 +233,7 @@ class AddEditSightingViewModel(
 
     fun onTimestampChanged(timestamp: Long) {
         savedStateHandle["timestamp"] = timestamp
-
-        _uiState.value = _uiState.value.copy(
-            timestamp = timestamp
-        )
+        _uiState.value = _uiState.value.copy(timestamp = timestamp)
     }
 
     fun loadForEditing(sightingId: Long) {
@@ -247,6 +262,7 @@ class AddEditSightingViewModel(
                     notes = sighting.notes.orEmpty(),
                     photoUri = sighting.photoUri,
                     timestamp = sighting.timestamp,
+                    outingId = sighting.outingId,
                     errorMessage = null
                 )
 
@@ -254,12 +270,10 @@ class AddEditSightingViewModel(
                     sighting.latitude.toString()
                 savedStateHandle["longitude"] =
                     sighting.longitude.toString()
-                savedStateHandle["notes"] =
-                    sighting.notes.orEmpty()
-                savedStateHandle["photoUri"] =
-                    sighting.photoUri
-                savedStateHandle["timestamp"] =
-                    sighting.timestamp
+                savedStateHandle["notes"] = sighting.notes.orEmpty()
+                savedStateHandle["photoUri"] = sighting.photoUri
+                savedStateHandle["timestamp"] = sighting.timestamp
+                savedStateHandle["outingId"] = sighting.outingId
 
                 if (species != null) {
                     onSpeciesSelected(species)
@@ -275,10 +289,11 @@ class AddEditSightingViewModel(
 
     fun save() {
         val currentState = _uiState.value
-
         val species = currentState.species
-        val latitude = CoordinateParser.parse(currentState.latitude, "NS")
-        val longitude = CoordinateParser.parse(currentState.longitude, "EW")
+        val latitude =
+            CoordinateParser.parse(currentState.latitude, "NS")
+        val longitude =
+            CoordinateParser.parse(currentState.longitude, "EW")
 
         when {
             species == null -> {
@@ -316,6 +331,7 @@ class AddEditSightingViewModel(
                 if (editingSightingId == null) {
                     val sighting = SightingEntity(
                         speciesId = species.id,
+                        outingId = currentState.outingId,
                         latitude = latitude!!,
                         longitude = longitude!!,
                         timestamp = currentState.timestamp,
@@ -344,6 +360,7 @@ class AddEditSightingViewModel(
 
                     val updated = existing.copy(
                         speciesId = species.id,
+                        outingId = currentState.outingId,
                         latitude = latitude!!,
                         longitude = longitude!!,
                         timestamp = currentState.timestamp,

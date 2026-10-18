@@ -1,6 +1,8 @@
+
 package com.example.wildlife_app.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Pets
 import androidx.compose.material.icons.outlined.Settings
@@ -14,11 +16,27 @@ data class TopLevelDestination(
     val icon: ImageVector
 )
 
-// To add the Outings tab later, add one entry here.
 val topLevelDestinations = listOf(
-    TopLevelDestination(Destinations.HOME, "Home", Icons.Outlined.Home),
-    TopLevelDestination(Destinations.SIGHTING_LIST, "Sightings", Icons.Outlined.Pets),
-    TopLevelDestination(Destinations.SETTINGS, "Settings", Icons.Outlined.Settings)
+    TopLevelDestination(
+        Destinations.HOME,
+        "Home",
+        Icons.Outlined.Home
+    ),
+    TopLevelDestination(
+        Destinations.SIGHTING_LIST,
+        "Sightings",
+        Icons.Outlined.Pets
+    ),
+    TopLevelDestination(
+        Destinations.OUTINGS,
+        "Outings",
+        Icons.Outlined.Explore
+    ),
+    TopLevelDestination(
+        Destinations.SETTINGS,
+        "Settings",
+        Icons.Outlined.Settings
+    )
 )
 
 fun NavDestination?.isInHierarchyOf(route: String): Boolean =

@@ -63,6 +63,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
 
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
 

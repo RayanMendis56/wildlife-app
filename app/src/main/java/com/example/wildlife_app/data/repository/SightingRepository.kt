@@ -1,3 +1,4 @@
+
 package com.example.wildlife_app.data.repository
 
 import com.example.wildlife_app.data.local.dao.SightingDao
@@ -41,6 +42,12 @@ class SightingRepository(
         sighting: SightingEntity
     ) {
         sightingDao.delete(sighting)
+    }
+
+    suspend fun restoreSighting(
+        sighting: SightingEntity
+    ) {
+        sightingDao.insert(sighting)
     }
 
     fun observeSightingsByOuting(

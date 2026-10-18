@@ -1,17 +1,23 @@
 
 package com.example.wildlife_app.ui.addedit
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wildlife_app.data.local.PhotoStorage
+import com.example.wildlife_app.data.local.entity.OutingEntity
 import com.example.wildlife_app.data.local.entity.SightingEntity
+import com.example.wildlife_app.data.repository.OutingRepository
 import com.example.wildlife_app.data.repository.SightingRepository
 import com.example.wildlife_app.data.repository.SpeciesRepository
+import com.example.wildlife_app.domain.CoordinateParser
 import com.example.wildlife_app.domain.model.Species
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 data class AddEditSightingUiState(
     val species: Species? = null,
@@ -20,18 +26,24 @@ data class AddEditSightingUiState(
     val notes: String = "",
     val photoUri: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
+    val outingId: Long? = null,
+    val outings: List<OutingEntity> = emptyList(),
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val savedSightingId: Long? = null,
     val speciesQuery: String = "",
     val speciesResults: List<Species> = emptyList(),
-    val isSearchingSpecies: Boolean = false
+    val isSearchingSpecies: Boolean = false,
+    val speciesSearchError: String? = null,
+    val hasSearchedSpecies: Boolean = false
 )
 
 class AddEditSightingViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val sightingRepository: SightingRepository,
-    private val speciesRepository: SpeciesRepository
+    private val speciesRepository: SpeciesRepository,
+    private val photoStorage: PhotoStorage,
+    private val outingRepository: OutingRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -42,6 +54,7 @@ class AddEditSightingViewModel(
             photoUri = savedStateHandle["photoUri"],
             timestamp = savedStateHandle["timestamp"]
                 ?: System.currentTimeMillis(),
+            outingId = savedStateHandle["outingId"],
             speciesQuery = savedStateHandle["speciesQuery"] ?: "",
             species = restoreSelectedSpecies()
         )
@@ -51,6 +64,23 @@ class AddEditSightingViewModel(
         _uiState.asStateFlow()
 
     private var editingSightingId: Long? = null
+
+    init {
+        observeOutings()
+    }
+
+    private fun observeOutings() {
+        viewModelScope.launch {
+            outingRepository.observeAllOutings().collect { outings ->
+                _uiState.value = _uiState.value.copy(outings = outings)
+            }
+        }
+    }
+
+    fun onOutingSelected(outingId: Long?) {
+        savedStateHandle["outingId"] = outingId
+        _uiState.value = _uiState.value.copy(outingId = outingId)
+    }
 
     private fun restoreSelectedSpecies(): Species? {
         val id = savedStateHandle.get<Long>("selectedSpeciesId")
@@ -73,6 +103,9 @@ class AddEditSightingViewModel(
 
         _uiState.value = _uiState.value.copy(
             speciesQuery = query,
+            speciesResults = emptyList(),
+            speciesSearchError = null,
+            hasSearchedSpecies = false,
             errorMessage = null
         )
     }
@@ -90,8 +123,10 @@ class AddEditSightingViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isSearchingSpecies = true,
-                errorMessage = null,
-                speciesResults = emptyList()
+                speciesResults = emptyList(),
+                speciesSearchError = null,
+                hasSearchedSpecies = false,
+                errorMessage = null
             )
 
             speciesRepository.searchSpecies(query).fold(
@@ -99,18 +134,19 @@ class AddEditSightingViewModel(
                     _uiState.value = _uiState.value.copy(
                         isSearchingSpecies = false,
                         speciesResults = results,
-                        errorMessage = if (results.isEmpty()) {
-                            "No species found. Try another name."
-                        } else {
-                            null
-                        }
+                        speciesSearchError = null,
+                        hasSearchedSpecies = true,
+                        errorMessage = null
                     )
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isSearchingSpecies = false,
-                        errorMessage = error.message
-                            ?: "Unable to search species."
+                        speciesResults = emptyList(),
+                        speciesSearchError = error.message
+                            ?: "Unable to search species. Please try again.",
+                        hasSearchedSpecies = false,
+                        errorMessage = null
                     )
                 }
             )
@@ -128,13 +164,15 @@ class AddEditSightingViewModel(
 
         _uiState.value = _uiState.value.copy(
             species = species,
+            speciesResults = emptyList(),
+            speciesSearchError = null,
+            hasSearchedSpecies = false,
             errorMessage = null
         )
     }
 
     fun onLatitudeChanged(latitude: String) {
         savedStateHandle["latitude"] = latitude
-
         _uiState.value = _uiState.value.copy(
             latitude = latitude,
             errorMessage = null
@@ -143,7 +181,6 @@ class AddEditSightingViewModel(
 
     fun onLongitudeChanged(longitude: String) {
         savedStateHandle["longitude"] = longitude
-
         _uiState.value = _uiState.value.copy(
             longitude = longitude,
             errorMessage = null
@@ -152,29 +189,67 @@ class AddEditSightingViewModel(
 
     fun onNotesChanged(notes: String) {
         savedStateHandle["notes"] = notes
-
-        _uiState.value = _uiState.value.copy(
-            notes = notes
-        )
+        _uiState.value = _uiState.value.copy(notes = notes)
     }
 
     fun onPhotoSelected(photoUri: String?) {
         savedStateHandle["photoUri"] = photoUri
+        _uiState.value = _uiState.value.copy(photoUri = photoUri)
+    }
 
+    fun onGalleryPhotoPicked(source: Uri?) {
+        if (source == null) return
+
+        viewModelScope.launch {
+            val storedUri = photoStorage.copyFromGallery(source)
+            if (storedUri != null) {
+                onPhotoSelected(storedUri)
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage =
+                        "Couldn't load that photo. Please try another one."
+                )
+            }
+        }
+    }
+
+    fun prepareCameraPhoto(): Uri? =
+        try {
+            val target = photoStorage.createCameraTarget()
+            savedStateHandle["pendingCameraPath"] = target.path
+            target.contentUri
+        } catch (_: IOException) {
+            _uiState.value = _uiState.value.copy(
+                errorMessage =
+                    "Couldn't prepare the camera. Check device storage."
+            )
+            null
+        }
+
+    fun onCameraResult(success: Boolean) {
+        val path =
+            savedStateHandle.get<String>("pendingCameraPath") ?: return
+
+        savedStateHandle.remove<String>("pendingCameraPath")
+
+        val storedUri = photoStorage.finishCameraCapture(path, success)
+        if (storedUri != null) onPhotoSelected(storedUri)
+    }
+
+    fun onCameraUnavailable() {
+        onCameraResult(false)
         _uiState.value = _uiState.value.copy(
-            photoUri = photoUri
+            errorMessage = "No camera app is available on this device."
         )
     }
 
     fun onTimestampChanged(timestamp: Long) {
         savedStateHandle["timestamp"] = timestamp
-
-        _uiState.value = _uiState.value.copy(
-            timestamp = timestamp
-        )
+        _uiState.value = _uiState.value.copy(timestamp = timestamp)
     }
 
     fun loadForEditing(sightingId: Long) {
+        if (editingSightingId == sightingId) return
         editingSightingId = sightingId
 
         viewModelScope.launch {
@@ -199,6 +274,7 @@ class AddEditSightingViewModel(
                     notes = sighting.notes.orEmpty(),
                     photoUri = sighting.photoUri,
                     timestamp = sighting.timestamp,
+                    outingId = sighting.outingId,
                     errorMessage = null
                 )
 
@@ -206,12 +282,10 @@ class AddEditSightingViewModel(
                     sighting.latitude.toString()
                 savedStateHandle["longitude"] =
                     sighting.longitude.toString()
-                savedStateHandle["notes"] =
-                    sighting.notes.orEmpty()
-                savedStateHandle["photoUri"] =
-                    sighting.photoUri
-                savedStateHandle["timestamp"] =
-                    sighting.timestamp
+                savedStateHandle["notes"] = sighting.notes.orEmpty()
+                savedStateHandle["photoUri"] = sighting.photoUri
+                savedStateHandle["timestamp"] = sighting.timestamp
+                savedStateHandle["outingId"] = sighting.outingId
 
                 if (species != null) {
                     onSpeciesSelected(species)
@@ -227,10 +301,11 @@ class AddEditSightingViewModel(
 
     fun save() {
         val currentState = _uiState.value
-
         val species = currentState.species
-        val latitude = currentState.latitude.toDoubleOrNull()
-        val longitude = currentState.longitude.toDoubleOrNull()
+        val latitude =
+            CoordinateParser.parse(currentState.latitude, "NS")
+        val longitude =
+            CoordinateParser.parse(currentState.longitude, "EW")
 
         when {
             species == null -> {
@@ -268,6 +343,7 @@ class AddEditSightingViewModel(
                 if (editingSightingId == null) {
                     val sighting = SightingEntity(
                         speciesId = species.id,
+                        outingId = currentState.outingId,
                         latitude = latitude!!,
                         longitude = longitude!!,
                         timestamp = currentState.timestamp,
@@ -296,6 +372,7 @@ class AddEditSightingViewModel(
 
                     val updated = existing.copy(
                         speciesId = species.id,
+                        outingId = currentState.outingId,
                         latitude = latitude!!,
                         longitude = longitude!!,
                         timestamp = currentState.timestamp,

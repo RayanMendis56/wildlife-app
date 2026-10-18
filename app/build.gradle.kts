@@ -44,6 +44,14 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin") {
+            useVersion("2.2.10")
+        }
+    }
+}
+
 dependencies {
     val roomVersion = "2.8.5"
 
@@ -55,6 +63,11 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
 
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
+
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
@@ -62,6 +75,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.5")
 
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("io.coil-kt.coil3:coil-compose:3.6.3")
 
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation(

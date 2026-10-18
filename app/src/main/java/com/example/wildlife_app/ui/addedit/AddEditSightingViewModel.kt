@@ -17,7 +17,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import java.io.IOException
+
+sealed interface SpeciesSearchState {
+    data object Idle : SpeciesSearchState
+    data object Loading : SpeciesSearchState
+    data class Success(val results: List<Species>) : SpeciesSearchState
+    data object Empty : SpeciesSearchState
+    data class Error(val message: String) : SpeciesSearchState
+}
 
 data class AddEditSightingUiState(
     val species: Species? = null,
@@ -32,8 +41,7 @@ data class AddEditSightingUiState(
     val errorMessage: String? = null,
     val savedSightingId: Long? = null,
     val speciesQuery: String = "",
-    val speciesResults: List<Species> = emptyList(),
-    val isSearchingSpecies: Boolean = false
+    val searchState: SpeciesSearchState = SpeciesSearchState.Idle
 )
 
 class AddEditSightingViewModel(
@@ -100,6 +108,7 @@ class AddEditSightingViewModel(
         savedStateHandle["speciesQuery"] = query
         _uiState.value = _uiState.value.copy(
             speciesQuery = query,
+            searchState = SpeciesSearchState.Idle,
             errorMessage = null
         )
     }
@@ -116,35 +125,42 @@ class AddEditSightingViewModel(
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
-                isSearchingSpecies = true,
-                errorMessage = null,
-                speciesResults = emptyList()
+                searchState = SpeciesSearchState.Loading,
+                errorMessage = null
             )
 
             speciesRepository.searchSpecies(query).fold(
                 onSuccess = { results ->
                     _uiState.value = _uiState.value.copy(
-                        isSearchingSpecies = false,
-                        speciesResults = results,
-                        errorMessage = if (results.isEmpty()) {
-                            "No species found. Try another name."
+                        searchState = if (results.isEmpty()) {
+                            SpeciesSearchState.Empty
                         } else {
-                            null
+                            SpeciesSearchState.Success(results)
                         }
                     )
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
-                        isSearchingSpecies = false,
-                        errorMessage = error.message
-                            ?: "Unable to search species."
+                        searchState = SpeciesSearchState.Error(describeSearchError(error))
                     )
                 }
             )
         }
     }
 
+    private fun describeSearchError(error: Throwable): String = when (error) {
+        is IOException ->
+            "Couldn't reach the species service. Check your internet connection."
+        is HttpException ->
+            "The species service returned an error (code ${error.code()})."
+        else ->
+            "Something went wrong while searching."
+    }
+
     fun onSpeciesSelected(species: Species) {
+        val chosenName = species.commonName?.takeIf { it.isNotBlank() }
+            ?: species.scientificName
+
         savedStateHandle["selectedSpeciesId"] = species.id
         savedStateHandle["selectedSpeciesScientificName"] =
             species.scientificName
@@ -152,9 +168,12 @@ class AddEditSightingViewModel(
             species.commonName
         savedStateHandle["selectedSpeciesPhotoUrl"] =
             species.photoUrl
+        savedStateHandle["speciesQuery"] = chosenName
 
         _uiState.value = _uiState.value.copy(
             species = species,
+            speciesQuery = chosenName,
+            searchState = SpeciesSearchState.Idle,
             errorMessage = null
         )
     }

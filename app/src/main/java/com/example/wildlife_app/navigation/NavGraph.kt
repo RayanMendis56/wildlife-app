@@ -28,6 +28,8 @@ import com.example.wildlife_app.ui.detail.SightingDetailScreen
 import com.example.wildlife_app.ui.detail.SightingDetailViewModel
 import com.example.wildlife_app.ui.detail.SightingDetailViewModelFactory
 import com.example.wildlife_app.ui.home.HomeScreen
+import com.example.wildlife_app.ui.home.HomeViewModel
+import com.example.wildlife_app.ui.home.HomeViewModelFactory
 import com.example.wildlife_app.ui.settings.SettingsScreen
 import com.example.wildlife_app.ui.settings.SettingsViewModel
 import com.example.wildlife_app.ui.sightinglist.SightingListScreen
@@ -90,9 +92,16 @@ fun NavGraph() {
                     .imePadding()   // keeps form fields above the keyboard
             ) {
                 composable(Destinations.HOME) {
+                    val homeViewModel: HomeViewModel = viewModel(
+                        factory = HomeViewModelFactory(context)
+                    )
                     HomeScreen(
+                        viewModel = homeViewModel,
                         onAddSighting = { navController.navigate(Destinations.ADD_SIGHTING) },
-                        onViewSightings = { navigateToTopLevel(Destinations.SIGHTING_LIST) }
+                        onViewSightings = { navigateToTopLevel(Destinations.SIGHTING_LIST) },
+                        onSightingClick = { id ->
+                            navController.navigate(Destinations.sightingDetail(id))
+                        }
                     )
                 }
 

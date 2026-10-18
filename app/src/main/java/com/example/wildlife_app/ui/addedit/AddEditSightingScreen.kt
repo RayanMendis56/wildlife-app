@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -28,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,10 +40,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.wildlife_app.domain.model.Species
 import com.example.wildlife_app.ui.components.PhotoPicker
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -61,6 +68,7 @@ fun AddEditSightingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
 
     var outingMenuExpanded by remember { mutableStateOf(false) }
     var isGettingLocation by remember { mutableStateOf(false) }
@@ -204,7 +212,8 @@ fun AddEditSightingScreen(
             ) {
                 Text(
                     text = "1. Species",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
 
                 OutlinedTextField(
@@ -218,14 +227,10 @@ fun AddEditSightingScreen(
                 Button(
                     onClick = viewModel::searchSpecies,
                     enabled = uiState.speciesQuery.isNotBlank() &&
-                            !uiState.isSearchingSpecies,
+                            uiState.searchState !is SpeciesSearchState.Loading,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (uiState.isSearchingSpecies) {
-                        CircularProgressIndicator()
-                    } else {
-                        Text("Search Species")
-                    }
+                    Text("Search Species")
                 }
 
                 uiState.species?.let { species ->
@@ -251,30 +256,14 @@ fun AddEditSightingScreen(
                     }
                 }
 
-                uiState.speciesResults.forEach { species ->
-                    Card(
-                        onClick = {
-                            viewModel.onSpeciesSelected(species)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = species.commonName
-                                    ?.takeIf { it.isNotBlank() }
-                                    ?: species.scientificName,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = species.scientificName,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
+                SpeciesSearchResults(
+                    state = uiState.searchState,
+                    onSelect = { species ->
+                        viewModel.onSpeciesSelected(species)
+                        focusManager.clearFocus()
+                    },
+                    onRetry = viewModel::searchSpecies
+                )
             }
         }
 
@@ -288,7 +277,8 @@ fun AddEditSightingScreen(
             ) {
                 Text(
                     text = "2. Photo",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
 
                 PhotoPicker(
@@ -314,7 +304,8 @@ fun AddEditSightingScreen(
             ) {
                 Text(
                     text = "3. Location",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
 
                 Button(
@@ -398,7 +389,8 @@ fun AddEditSightingScreen(
             ) {
                 Text(
                     text = "4. Date and Time",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
 
                 Text("Observation date: $dateText")
@@ -480,7 +472,8 @@ fun AddEditSightingScreen(
             ) {
                 Text(
                     text = "5. Outing",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
 
                 ExposedDropdownMenuBox(
@@ -550,7 +543,8 @@ fun AddEditSightingScreen(
             ) {
                 Text(
                     text = "6. Notes",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
 
                 OutlinedTextField(
@@ -597,5 +591,87 @@ fun AddEditSightingScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun SpeciesSearchResults(
+    state: SpeciesSearchState,
+    onSelect: (Species) -> Unit,
+    onRetry: () -> Unit
+) {
+    when (state) {
+        SpeciesSearchState.Idle -> Unit
+
+        SpeciesSearchState.Loading -> {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .semantics { contentDescription = "Searching for species" }
+                )
+                Text("Searching for species…")
+            }
+        }
+
+        SpeciesSearchState.Empty -> {
+            Text(
+                text = "No matching species found. Try a different name, such as a common bird name.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        is SpeciesSearchState.Error -> {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = state.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                OutlinedButton(onClick = onRetry) {
+                    Text("Retry")
+                }
+            }
+        }
+
+        is SpeciesSearchState.Success -> {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.results.forEach { species ->
+                    Card(
+                        onClick = { onSelect(species) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics {
+                                contentDescription =
+                                    "Select species: " +
+                                        "${species.commonName ?: species.scientificName}, " +
+                                        "scientific name ${species.scientificName}"
+                            },
+                        colors = CardDefaults.cardColors()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = species.commonName
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: species.scientificName,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = species.scientificName,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

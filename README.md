@@ -35,7 +35,7 @@ Search for a species by name, attach a photo from the camera or gallery, record 
 
 | Home | Sightings | Add sighting | Detail |
 |---|---|---|---|
-| ![Home](screenshots/home.png) | ![List](screenshots/sightings.png) | ![Add](screenshots/addsightings.png) | ![Detail](screenshots/detail.png) |
+| ![Home](screenshots/home.png) | ![List](screenshots/sightings.png) | ![Add](screenshots/addsighting.png) | ![Detail](screenshots/detail.png) |
 
 ## 🏗️ Architecture
 
@@ -156,13 +156,13 @@ Or from the terminal:
 ## 🙏 Acknowledgements
 
 - 🌿 Species data from the [iNaturalist API](https://api.inaturalist.org/v1/docs/), shared under its respective licences.
-- 🤖 Generative AI (Claude) was used to explain concepts and review code that the authors tested and understand.
+- 🤖 Generative AI (Claude,Copilot) was used to explain concepts and review code that the authors tested and understand.
 
 ## 👥 Contributors
 
 | Contributor | Main areas |
 |---|---|
-| [Rayan Mendis](https://github.com/RayanMendis56) | App design and data schema, Room database (entities, DAOs, relations), iNaturalist API layer and bad-data handling, camera / gallery / Maps, theme and shared UI components, navigation shell, home dashboard |
-| [Sanuda Warampathi](https://github.com/Sanuda124) | Compose screens, polish of existing screens, Outings |
+| [Rayan Mendis](https://github.com/RayanMendis56) | App design and data schema, Room database (entities, DAOs, relations), iNaturalist API layer and bad-data handling, camera / gallery / Maps, theme and shared UI components, navigation shell |
+| [Sanuda Warampathi](https://github.com/Sanuda124) | Compose screens, polish of existing screens, Outings,, home dashboard |
 | [Dewnitha Dewasinghe](https://github.com/DEWWA06) | ViewModels and UI state, Settings and DataStore preference, network states with Retry, usability and accessibility checks |
 

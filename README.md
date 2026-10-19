@@ -31,7 +31,6 @@ Search for a species by name, attach a photo from the camera or gallery, record 
 
 ## 🖼️ Screenshots
 
-> Add your screenshots to a `screenshots/` folder and update the paths below.
 
 | Home | Sightings | Add sighting | Detail |
 |---|---|---|---|

@@ -161,7 +161,7 @@ Or from the terminal:
 
 | Contributor | Main areas |
 |---|---|
-| [Rayan Mendis](https://github.com/RayanMendis56) | App design and data schema, Room database (entities, DAOs, relations), iNaturalist API layer and bad-data handling, camera / gallery / Maps, theme and shared UI components, navigation shell |
-| [Sanuda Warampathi](https://github.com/Sanuda124) | Compose screens, polish of existing screens, Outings,, home dashboard |
-| [Dewnitha Dewasinghe](https://github.com/DEWWA06) | ViewModels and UI state, Settings and DataStore preference, network states with Retry, usability and accessibility checks |
+| [Rayan Mendis](https://github.com/RayanMendis56) | App design and data schema, Room database (entities, DAOs, relations), iNaturalist API layer and bad-data handling, camera / gallery / Maps, theme and shared UI components |
+| [Sanuda Warampathi](https://github.com/Sanuda124) | Compose screens, polish of existing screens, Outings, home dashboard, navigation shell|
+| [Devnitha Dewasinghe](https://github.com/DEWWA06) | ViewModels and UI state, Settings and DataStore preference, network states with Retry, usability and accessibility checks |
 
